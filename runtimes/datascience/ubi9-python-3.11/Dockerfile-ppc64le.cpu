@@ -11,9 +11,9 @@ ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
 ENV PATH="$HOME/.cargo/bin:$PATH"
 
 # Install dependencies
-RUN dnf install -y gcc-toolset-13 make wget unzip rust cargo && \
+RUN dnf install -y gcc-toolset-13 make wget unzip && \
     dnf clean all && \
-    pip install --upgrade pip 'cmake<4' setuptools wheel
+    pip install --upgrade pip setuptools wheel
 
 # Create a dummy file to trigger build dependency
 RUN touch /tmp/control
@@ -64,7 +64,7 @@ ENV OPENBLAS_VERSION=0.3.30
 ENV PATH="$HOME/.cargo/bin:$PATH"
 
 # Install dependencies
-RUN dnf install -y mesa-libGL skopeo rust cargo gcc g++ make openssl-devel autoconf automake libtool cmake unixODBC-devel && \
+RUN dnf install -y mesa-libGL skopeo gcc-toolset-13 unixODBC-devel cmake && \
     dnf clean all && rm -rf /var/cache/yum
 
 # Copy built OpenBLAS sources
@@ -78,8 +78,6 @@ RUN --mount=type=bind,from=onnx-builder,source=/onnx_wheels/,target=/onnx_wheels
     HOME=/root pip install /onnx_wheels/*.whl && \
     PREFIX=/usr/local make -C /openblas install && rm -rf /openblas
 
-
-
 # Other apps and tools installed as default user
 USER 1001
 
@@ -92,10 +90,9 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/oc
     tar -xzvf /tmp/openshift-client-linux.tar.gz oc && \
     rm -f /tmp/openshift-client-linux.tar.gz
 
-########################################
+##########################################
 # Stage 5: Final runtime-datascience image
-########################################
-
+##########################################
 FROM base AS runtime-datascience  
 
 ARG DATASCIENCE_SOURCE_CODE=runtimes/datascience/ubi9-python-3.11
@@ -120,6 +117,7 @@ COPY ${DATASCIENCE_SOURCE_CODE}/Pipfile.lock ./
 COPY ${DATASCIENCE_SOURCE_CODE}/utils ./utils/
 
 RUN echo "Installing softwares and packages" && \
+    source /opt/rh/gcc-toolset-13/enable && \
     micropipenv install && \
     rm -f ./Pipfile.lock && \
     # Fix permissions to support pip in Openshift environments \
@@ -128,4 +126,5 @@ RUN echo "Installing softwares and packages" && \
 
 USER 1001
 WORKDIR /opt/app-root/src
+
 
