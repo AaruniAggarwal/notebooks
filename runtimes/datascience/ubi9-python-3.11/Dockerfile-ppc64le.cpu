@@ -68,15 +68,16 @@ RUN dnf install -y mesa-libGL skopeo gcc-toolset-13 unixODBC-devel cmake && \
     dnf clean all && rm -rf /var/cache/yum
 
 # Copy built OpenBLAS sources
-COPY --from=openblas-builder /root/OpenBLAS-${OPENBLAS_VERSION} /openblas
+COPY --from=openblas-builder /tmp/control /dev/null
 
 # Dummy file to trigger build dependency
 COPY --from=onnx-builder /tmp/control /dev/null
 
 # Install onnx wheels & OpenBLAS
 RUN --mount=type=bind,from=onnx-builder,source=/onnx_wheels/,target=/onnx_wheels/,ro \
+    --mount=type=bind,from=openblas-builder,source=/root/OpenBLAS-${OPENBLAS_VERSION}/,target=/openblas/,rw \
     HOME=/root pip install /onnx_wheels/*.whl && \
-    PREFIX=/usr/local make -C /openblas install && rm -rf /openblas
+    PREFIX=/usr/local make -C /openblas install
 
 # Other apps and tools installed as default user
 USER 1001
@@ -126,5 +127,4 @@ RUN echo "Installing softwares and packages" && \
 
 USER 1001
 WORKDIR /opt/app-root/src
-
 
